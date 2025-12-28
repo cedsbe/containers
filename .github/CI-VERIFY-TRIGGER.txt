@@ -1,0 +1,3 @@
+Trigger verify job (test)
+
+This file was added by an automated test to trigger the `verify-dockerfile` GitHub Actions job.
