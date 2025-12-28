@@ -1,0 +1,86 @@
+name: Build and publish Docker image 🚀
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  verify-dockerfile:
+    name: Verify Dockerfile (fast)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU and Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build (verify only)
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: false
+
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU and Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set image metadata
+        id: meta
+        run: |
+          echo "IMAGE_REG=ghcr.io/${{ github.repository_owner }}" >> $GITHUB_ENV
+          echo "IMAGE_NAME=${{ github.repository_owner }}/wallos" >> $GITHUB_ENV
+          echo "BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_ENV
+
+      - name: Build and push (multi-arch)
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.IMAGE_REG }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_REG }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ env.BUILD_DATE }}
+
+      - name: Add release tag (when pushing a Git tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          echo "Tag push detected (${GITHUB_REF#refs/tags/}). Retagging image with release tag..."
+          docker pull ${{ env.IMAGE_REG }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker tag ${{ env.IMAGE_REG }}/${{ env.IMAGE_NAME }}:${{ github.sha }} ${{ env.IMAGE_REG }}/${{ env.IMAGE_NAME }}:${GITHUB_REF#refs/tags/}
+          docker push ${{ env.IMAGE_REG }}/${{ env.IMAGE_NAME }}:${GITHUB_REF#refs/tags/}
+
+      - name: Output published image names
+        run: |
+          echo "Published: ${{ env.IMAGE_REG }}/${{ env.IMAGE_NAME }}:latest"
+          echo "Published: ${{ env.IMAGE_REG }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then echo "Also published: ${{ env.IMAGE_REG }}/${{ env.IMAGE_NAME }}:${GITHUB_REF#refs/tags/}"; fi
