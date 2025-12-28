@@ -1,0 +1,21 @@
+name: Build and publish Docker image 🚀
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push-wallos:
+    uses: ./.github/workflows/docker-publish-template.yml
+    with:
+      image_name: wallos
+      context: ./apps/wallos
+      dockerfile: ./apps/wallos/Dockerfile
