@@ -27,8 +27,8 @@ jobs:
       - name: Build (verify only)
         uses: docker/build-push-action@v4
         with:
-          context: .
-          file: ./Dockerfile
+          context: ./apps/wallos
+          file: ./apps/wallos/Dockerfile
           platforms: linux/amd64
           push: false
 
@@ -59,8 +59,8 @@ jobs:
       - name: Build and push (multi-arch)
         uses: docker/build-push-action@v4
         with:
-          context: .
-          file: ./Dockerfile
+          context: ./apps/wallos
+          file: ./apps/wallos/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
