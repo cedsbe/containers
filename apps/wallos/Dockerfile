@@ -15,40 +15,51 @@ LABEL org.opencontainers.image.version="${WALLOS_VERSION}"
 
 RUN <<EOF
     apk upgrade --no-cache
+
+    # Runtime dependencies (remain in final image)
     apk add --no-cache \
         dumb-init \
         sqlite-dev \
         libpng \
-        libpng-dev \
         libjpeg-turbo \
-        libjpeg-turbo-dev \
         freetype \
-        freetype-dev \
         curl \
-        autoconf \
         libgomp \
-        icu-dev \
+        icu-libs \
         icu-data-full \
         nginx \
         tzdata \
         imagemagick \
+        libzip \
+        sqlite \
+        libwebp
+
+    # Build-time dependencies (cleaned up after use)
+    apk add --no-cache --virtual .build-deps \
+        $PHPIZE_DEPS \
+        libpng-dev \
+        libjpeg-turbo-dev \
+        freetype-dev \
+        icu-dev \
         imagemagick-dev \
         libzip-dev \
-        sqlite \
-        libwebp-dev \
+        libwebp-dev
+
+    # Build-time utilities (cleaned up after use)
+    apk add --no-cache --virtual .fetch-deps \
         dos2unix \
-        unzip \
-        wget
+        unzip
+
     docker-php-ext-install pdo pdo_sqlite calendar
     docker-php-ext-enable pdo pdo_sqlite
     docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp
     docker-php-ext-install -j$(nproc) gd intl zip
 
     # imagick requires compilation
-    # The PHPIZE_DEPS variable is provided by the php:*-alpine images
-    apk add --no-cache --virtual .build-deps $PHPIZE_DEPS
     pecl install imagick
     docker-php-ext-enable imagick
+
+    # Clean up build dependencies
     apk del .build-deps
 
     # Download and install supercronic for rootless cron support (multi-arch)
@@ -69,7 +80,6 @@ RUN <<EOF
 EOF
 
 # Copy our custom startup.sh and nginx configs (overwrite Wallos release versions)
-# Copy our custom nginx.conf (clean config without embedded server block)
 COPY startup.sh /var/www/html/startup.sh
 COPY nginx-default.conf /tmp/nginx-default.conf
 COPY nginx.conf /etc/nginx/nginx.conf
@@ -78,6 +88,8 @@ COPY nginx.conf /etc/nginx/nginx.conf
 RUN <<EOF
     set -euo pipefail
     echo "Configuring Nginx"
+    # Support readonly root filesystem: runtime writable files (pid, tmp, logs) are placed under
+    # `/var/ephemeral` and `/var/log` so Kubernetes can mount writable volumes there.
     mkdir -p /etc/nginx/conf.d
     # Remove Wallos-provided nginx configs (we use our own with security rules)
     rm -f /var/www/html/nginx.conf /var/www/html/nginx.default.conf
@@ -98,19 +110,24 @@ RUN <<EOF
     chmod 755 /var/lib/nginx
     chown root:root /var/lib/nginx
 
-    # Pre-create nginx tmp subdirectories that nginx expects
+    # Create runtime writable mountpoints and temp/log dirs under /var/ephemeral and /var/log
     # Use 2775 (group-writable only) for security - no world-writable directories
     install -d -m 2775 -o root -g root \
-        /var/lib/nginx/tmp \
-        /var/lib/nginx/tmp/client_body \
-        /var/lib/nginx/tmp/proxy \
-        /var/lib/nginx/tmp/fastcgi \
-        /var/lib/nginx/tmp/uwsgi \
-        /var/lib/nginx/tmp/scgi \
-        /var/lib/nginx/logs \
+        /var/ephemeral/run \
+        /var/ephemeral/run/nginx \
+        /var/ephemeral/run/php-fpm \
+        /var/ephemeral/tmp \
+        /var/ephemeral/tmp/client_body \
+        /var/ephemeral/tmp/proxy \
+        /var/ephemeral/tmp/fastcgi \
+        /var/ephemeral/tmp/uwsgi \
+        /var/ephemeral/tmp/scgi \
+        /var/log \
         /var/log/nginx \
-        /run/nginx \
+        /var/log/cron \
+        /tmp \
         /tmp/nginx
+
 EOF
 
 # Configure cron jobs for Wallos
@@ -121,9 +138,10 @@ RUN <<EOF
     dos2unix /etc/crontab
     # Readable by all users (arbitrary UIDs need to read this)
     chmod 0644 /etc/crontab
-    # Writable log directory for arbitrary UID (group ownership with write permissions)
-    install -d -m 2775 -o root -g root /var/log/cron
     rm -f /var/www/html/cronjobs
+
+    # Clean up fetch utilities no longer needed
+    apk del .fetch-deps
 EOF
 
 # Configure PHP-FPM and set application permissions for arbitrary UID/GID
@@ -134,6 +152,9 @@ RUN <<EOF
     # Each PHP-FPM worker uses ~32MB, 15 workers = ~480MB + overhead
     echo 'pm.max_children = 15' >> /usr/local/etc/php-fpm.d/zz-docker.conf
     echo 'pm.max_requests = 500' >> /usr/local/etc/php-fpm.d/zz-docker.conf
+    # Place PHP-FPM runtime files under writable mount for readonly rootfs environments
+    echo 'pid = /var/ephemeral/run/php-fpm.pid' >> /usr/local/etc/php-fpm.d/zz-docker.conf
+    echo 'error_log = /var/log/php-fpm.log' >> /usr/local/etc/php-fpm.d/zz-docker.conf
 
     echo "Setting permissions for arbitrary user IDs (Kubernetes compatibility)"
     # Permission Strategy for Kubernetes/Docker Compatibility:
@@ -152,9 +173,6 @@ RUN <<EOF
         /var/www/html/db \
         /var/www/html/images/uploads/logos/avatars \
         /var/www/html/.tmp
-
-    # Ensure PHP-FPM can write its PID file with arbitrary UID
-    install -d -m 2775 -o root -g root /run/php-fpm
 EOF
 
 WORKDIR /var/www/html
@@ -162,8 +180,9 @@ WORKDIR /var/www/html
 EXPOSE ${NGINX_PORT}
 
 # Health check to verify the application is responding
+# Note: Port is hardcoded because Docker evaluates ARG at build time, not runtime
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-    CMD curl -fsS http://localhost:${NGINX_PORT}/health.php || exit 1
+    CMD curl -fsS http://localhost:8080/health.php || exit 1
 
 # Run as nobody by default for security (UID 65534)
 # Kubernetes securityContext runAsUser will override this with the specified UID

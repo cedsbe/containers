@@ -8,7 +8,7 @@
         "/\\.tftpl$/",
         "/\\.yaml$/",
         "/\\.sh$/",
-        "/Dockerfile/",
+        "/(^|/)Dockerfile$/",
         "/\\.tfvars$/"
       ],
       "matchStrings": [
