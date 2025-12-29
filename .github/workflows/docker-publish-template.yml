@@ -39,6 +39,8 @@ jobs:
           push: false
 
   build-and-push:
+    # Only run after verify passes to prevent pushing broken images
+    needs: verify-dockerfile
     runs-on: ubuntu-latest
 
     steps:
@@ -80,9 +82,10 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         run: |
           echo "Tag push detected (${GITHUB_REF#refs/tags/}). Retagging image with release tag..."
-          docker pull ${{ steps.meta.outputs.IMAGE_REG }}/${{ inputs.image_name }}:${{ github.sha }}
-          docker tag ${{ steps.meta.outputs.IMAGE_REG }}/${{ inputs.image_name }}:${{ github.sha }} ${{ steps.meta.outputs.IMAGE_REG }}/${{ inputs.image_name }}:${GITHUB_REF#refs/tags/}
-          docker push ${{ steps.meta.outputs.IMAGE_REG }}/${{ inputs.image_name }}:${GITHUB_REF#refs/tags/}
+          # Use buildx imagetools to retag the multi-arch manifest (docker pull/tag/push only handles single arch)
+          docker buildx imagetools create \
+            --tag ${{ steps.meta.outputs.IMAGE_REG }}/${{ inputs.image_name }}:${GITHUB_REF#refs/tags/} \
+            ${{ steps.meta.outputs.IMAGE_REG }}/${{ inputs.image_name }}:${{ github.sha }}
 
       - name: Output published image names
         run: |
