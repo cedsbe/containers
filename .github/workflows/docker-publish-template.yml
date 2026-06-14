@@ -8,36 +8,23 @@ on:
       context:
         required: true
         type: string
-        description: 'Path to the Docker build context (e.g., ./apps/wallos)'
+        description: 'Path to the Docker build context (e.g., ./apps/actions-runner)'
       dockerfile:
         required: true
         type: string
-        description: 'Path to the Dockerfile (e.g., ./apps/wallos/Dockerfile)'
+        description: 'Path to the Dockerfile (e.g., ./apps/actions-runner/Dockerfile)'
+
+      platforms:
+        required: false
+        type: string
+        description: 'Comma-separated list of target platforms for multi-arch builds (default: linux/amd64,linux/arm64)'
+        default: 'linux/amd64,linux/arm64'
 
 permissions:
   contents: read
   packages: write
 
 jobs:
-  verify-dockerfile:
-    name: Verify Dockerfile (fast)
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Set up QEMU and Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Build (verify only)
-        uses: docker/build-push-action@v7
-        with:
-          context: ${{ inputs.context }}
-          file: ${{ inputs.dockerfile }}
-          platforms: linux/amd64
-          push: false
-
   build-and-push:
     runs-on: ubuntu-latest
 
@@ -66,7 +53,7 @@ jobs:
         with:
           context: ${{ inputs.context }}
           file: ${{ inputs.dockerfile }}
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ inputs.platforms }}
           push: true
           tags: |
             ${{ steps.meta.outputs.IMAGE_REG }}/${{ inputs.image_name }}:latest
