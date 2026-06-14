@@ -19,3 +19,4 @@ jobs:
       image_name: actions-runner-cedsbe
       context: ./apps/actions-runner
       dockerfile: ./apps/actions-runner/Dockerfile
+      platforms: linux/amd64
