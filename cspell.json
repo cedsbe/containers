@@ -1,0 +1,64 @@
+{
+  "allowCompoundWords": true,
+  "dictionaries": [
+    "project-words"
+  ],
+  "dictionaryDefinitions": [
+    {
+      "addWords": true,
+      "name": "project-words",
+      "path": "./cspell-dict.txt"
+    }
+  ],
+  "flagWords": [],
+  "ignorePaths": [
+    ".git/**",
+    ".gitignore"
+  ],
+  "language": "en",
+  "maxDuplicateProblems": 3,
+  "maxNumberOfProblems": 100,
+  "minWordLength": 3,
+  "numSuggestions": 8,
+  "overrides": [
+    {
+      "filename": "**/*.{md,mdx}",
+      "ignoreRegExpList": [
+        "/```[\\s\\S]*?```/g",
+        "/`[^`]*`/g",
+        "/\\[.*?\\]\\(.*?\\)/g"
+      ]
+    },
+    {
+      "filename": "**/*.{yaml,yml}",
+      "ignoreRegExpList": [
+        "/---/g",
+        "/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/gi"
+      ]
+    },
+    {
+      "filename": "**/*.{tf,hcl}",
+      "ignoreRegExpList": [
+        "/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/gi",
+        "/[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}/g"
+      ]
+    },
+    {
+      "filename": "**/*.{ps1,psm1,psd1}",
+      "ignoreRegExpList": [
+        "/\\$[a-zA-Z_][a-zA-Z0-9_]*/g",
+        "/\\[.*?\\]/g"
+      ]
+    },
+    {
+      "filename": "**/*.{sh,bash,zsh,fish}",
+      "ignoreRegExpList": [
+        "/\\$[a-zA-Z_][a-zA-Z0-9_]*/g",
+        "/\\${[^}]*}/g"
+      ]
+    }
+  ],
+  "suggestionsTimeout": 5000,
+  "version": "0.2",
+  "words": []
+}

@@ -1,0 +1,21 @@
+name: Build and publish actions-runner Docker image 🚀
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push-actions-runner:
+    uses: ./.github/workflows/docker-publish-template.yml
+    with:
+      image_name: actions-runner-cedsbe
+      context: ./apps/actions-runner
+      dockerfile: ./apps/actions-runner/Dockerfile
