@@ -8,7 +8,7 @@
 source $HELPER_SCRIPTS/install.sh
 source $HELPER_SCRIPTS/os.sh
 
-terraform_arch="amd64"
+terraform_arch=$(dpkg --print-architecture)
 
 # Install Terraform
 download_url=$(curl -fsSL https://api.releases.hashicorp.com/v1/releases/terraform/latest | jq -r ".builds[] | select((.arch==\"$terraform_arch\") and (.os==\"linux\")).url")
