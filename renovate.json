@@ -2,23 +2,37 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "customManagers": [
     {
+      "autoReplaceStringTemplate": "{{{newValue}}}{{#if newDigest}}@{{{newDigest}}}{{/if}} # renovate: datasource={{{datasource}}} depName={{{depName}}}{{#if packageName}} packageName={{{packageName}}}{{/if}}{{#if versioning}} versioning={{{versioning}}}{{/if}}{{#if extractVersion}} extractVersion={{{extractVersion}}}{{/if}}{{#if registryUrl}} registryUrl={{{registryUrl}}}{{/if}}",
       "customType": "regex",
       "managerFilePatterns": [
-        "/\\.tf$/",
-        "/\\.tftpl$/",
-        "/\\.yaml$/",
-        "/\\.sh$/",
-        "/Dockerfile/",
-        "/\\.tfvars$/"
+        "/\\.ya?ml$/",
+        "/\\.sh$/"
       ],
       "matchStrings": [
-        "(?<currentValue>[\\w+\\.\\-]*)['\",;]*\\s*#\\s?renovate: (?<datasource>\\S+)=(?<depName>\\S+)\\s?(registry=(?<registryUrl>\\S+))?\\s?(versioning=(?<versioning>\\S+))?\\s?(extractVersion=(?<extractVersion>\\S+))?"
+        "(?<currentValue>[\\w.+-]+)(@(?<currentDigest>sha256:[a-fA-F0-9]{64}))?['\",;]*\\s+# renovate: datasource=(?<datasource>[a-zA-Z0-9._-]+) depName=(?<depName>\\S+)(?: (?:lookupName|packageName)=(?<packageName>\\S+))?(?: versioning=(?<versioning>\\S+))?(?: extractVersion=(?<extractVersion>\\S+))?(?: registryUrl=(?<registryUrl>\\S+))?"
       ]
     }
   ],
   "extends": [
-    "config:recommended",
+    "config:best-practices",
+    "customManagers:dockerfileVersions",
+    "customManagers:githubActionsVersions",
+    "customManagers:tfvarsVersions",
     ":enablePreCommit",
     ":rebaseStalePrs"
-  ]
+  ],
+  "prBodyColumns": [
+    "Package",
+    "Type",
+    "Datasource",
+    "Manager",
+    "Update",
+    "Change",
+    "Pending"
+  ],
+  "prBodyDefinitions": {
+    "Datasource": "`{{{datasource}}}`",
+    "Manager": "`{{{manager}}}`"
+  },
+  "rebaseWhen": "behind-base-branch"
 }

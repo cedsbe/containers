@@ -1,0 +1,7 @@
+{
+  "apt": {
+    "custom_packages": [
+      "git-crypt"
+    ]
+  }
+}
