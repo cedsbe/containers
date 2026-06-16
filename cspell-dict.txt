@@ -1,5 +1,7 @@
 awk
 awscliv
+fmt
+MCP
 azcliextensions
 azcopy
 buildx

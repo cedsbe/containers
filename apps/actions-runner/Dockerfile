@@ -15,11 +15,16 @@ ENV IMAGEDATA_NAME="ubuntu:24.04"
 ENV NVM_DIR="/etc/skel/.nvm"
 ENV HELPER_SCRIPTS="/tmp/scripts/helpers"
 ENV INSTALLER_SCRIPT_FOLDER="/tmp/toolsets"
+ENV INSTALLER_CUSTOM_SCRIPT_FOLDER="/tmp/custom-toolsets"
 
 COPY scripts/build /tmp/scripts/build
 COPY scripts/helpers /tmp/scripts/helpers
 COPY toolsets/ /tmp/toolsets/
 RUN find /tmp/scripts -name "*.sh" -type f -exec chmod +x {} \;
+
+COPY custom/build/ /tmp/custom/build/
+COPY custom/toolsets/ /tmp/custom-toolsets/
+RUN find /tmp/custom/build -name "*.sh" -type f -exec chmod +x {} \;
 
 COPY scripts/entrypoint.sh /opt/entrypoint.sh
 RUN chmod +x /opt/entrypoint.sh
@@ -41,12 +46,9 @@ RUN touch /run/.containerenv && \
   /tmp/scripts/build/install-azcopy.sh && \
   /tmp/scripts/build/install-azure-cli.sh && \
   /tmp/scripts/build/install-azure-devops-cli.sh && \
-  /tmp/scripts/build/install-bicep.sh && \
-  /tmp/scripts/build/install-aws-tools.sh && \
   /tmp/scripts/build/install-git.sh && \
   /tmp/scripts/build/install-git-lfs.sh && \
   /tmp/scripts/build/install-github-cli.sh && \
-  /tmp/scripts/build/install-google-cloud-cli.sh && \
   /tmp/scripts/build/install-nvm.sh && \
   /tmp/scripts/build/install-nodejs.sh && \
   /tmp/scripts/build/install-powershell.sh && \
@@ -56,6 +58,10 @@ RUN touch /run/.containerenv && \
   /tmp/scripts/build/install-zstd.sh && \
   /tmp/scripts/build/install-pipx-packages.sh && \
   /tmp/scripts/build/install-docker-cli.sh && \
+  echo "----------------------------------" && \
+  /tmp/custom/build/install-apt-custom.sh && \
+  /tmp/custom/build/install-terraform.sh && \
+  echo "----------------------------------" && \
   /tmp/scripts/build/configure-system.sh && \
   /tmp/scripts/helpers/cleanup.sh
 
