@@ -8,15 +8,30 @@
 # Source the helpers for use with the script
 source $HELPER_SCRIPTS/install.sh
 
-awscliv2_archive_path=$(download_with_retry "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip")
+dpkg_arch=$(dpkg --print-architecture)
+
+# AWS CLI uses "aarch64" on arm64, "x86_64" on amd64
+if [ "$dpkg_arch" = "amd64" ]; then
+  aws_arch="x86_64"
+  smplugin_arch="ubuntu_64bit"
+  sam_arch="x86_64"
+elif [ "$dpkg_arch" = "arm64" ]; then
+  aws_arch="aarch64"
+  smplugin_arch="ubuntu_arm64"
+  sam_arch="arm64"
+else
+  echo "Unsupported architecture for AWS tools: $dpkg_arch"; exit 1
+fi
+
+awscliv2_archive_path=$(download_with_retry "https://awscli.amazonaws.com/awscli-exe-linux-${aws_arch}.zip")
 unzip -qq "$awscliv2_archive_path" -d /tmp/installers/
 /tmp/installers/aws/install -i /usr/local/aws-cli -b /usr/local/bin
 
-smplugin_deb_path=$(download_with_retry "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb")
+smplugin_deb_path=$(download_with_retry "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/${smplugin_arch}/session-manager-plugin.deb")
 apt-get install "$smplugin_deb_path"
 
 # Download the latest aws sam cli release
-aws_sam_cli_archive_name="aws-sam-cli-linux-x86_64.zip"
+aws_sam_cli_archive_name="aws-sam-cli-linux-${sam_arch}.zip"
 sam_cli_download_url=$(resolve_github_release_asset_url "aws/aws-sam-cli" "endswith(\"$aws_sam_cli_archive_name\")" "latest")
 aws_sam_cli_archive_path=$(download_with_retry "$sam_cli_download_url")
 
