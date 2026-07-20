@@ -4,21 +4,27 @@ on:
       image_name:
         required: false
         type: string
-        description: 'Name of the Docker image.'
+        description: "Name of the Docker image."
       context:
         required: true
         type: string
-        description: 'Path to the Docker build context (e.g., ./apps/actions-runner)'
+        description: "Path to the Docker build context (e.g., ./apps/actions-runner)"
       dockerfile:
         required: true
         type: string
-        description: 'Path to the Dockerfile (e.g., ./apps/actions-runner/Dockerfile)'
+        description: "Path to the Dockerfile (e.g., ./apps/actions-runner/Dockerfile)"
 
       platforms:
         required: false
         type: string
-        description: 'Comma-separated list of target platforms for multi-arch builds (default: linux/amd64,linux/arm64)'
-        default: 'linux/amd64,linux/arm64'
+        description: "Comma-separated list of target platforms for multi-arch builds (default: linux/amd64,linux/arm64)"
+        default: "linux/amd64,linux/arm64"
+
+      publish:
+        required: false
+        type: boolean
+        description: "Whether to push the built image to the registry (default: true)"
+        default: true
 
 permissions:
   contents: read
@@ -54,25 +60,18 @@ jobs:
           context: ${{ inputs.context }}
           file: ${{ inputs.dockerfile }}
           platforms: ${{ inputs.platforms }}
-          push: true
+          push: ${{ inputs.publish }}
           tags: |
             ${{ steps.meta.outputs.IMAGE_REG }}/${{ inputs.image_name }}:latest
+            ${{ steps.meta.outputs.IMAGE_REG }}/${{ inputs.image_name }}:${GITHUB_REF#refs/tags/}
             ${{ steps.meta.outputs.IMAGE_REG }}/${{ inputs.image_name }}:${{ github.sha }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.created=${{ steps.meta.outputs.BUILD_DATE }}
 
-      - name: Add release tag (when pushing a Git tag)
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          echo "Tag push detected (${GITHUB_REF#refs/tags/}). Retagging image with release tag..."
-          docker pull ${{ steps.meta.outputs.IMAGE_REG }}/${{ inputs.image_name }}:${{ github.sha }}
-          docker tag ${{ steps.meta.outputs.IMAGE_REG }}/${{ inputs.image_name }}:${{ github.sha }} ${{ steps.meta.outputs.IMAGE_REG }}/${{ inputs.image_name }}:${GITHUB_REF#refs/tags/}
-          docker push ${{ steps.meta.outputs.IMAGE_REG }}/${{ inputs.image_name }}:${GITHUB_REF#refs/tags/}
-
       - name: Output published image names
         run: |
           echo "Published: ${{ steps.meta.outputs.IMAGE_REG }}/${{ inputs.image_name }}:latest"
           echo "Published: ${{ steps.meta.outputs.IMAGE_REG }}/${{ inputs.image_name }}:${{ github.sha }}"
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then echo "Also published: ${{ steps.meta.outputs.IMAGE_REG }}/${{ inputs.image_name }}:${GITHUB_REF#refs/tags/}"; fi
+          echo "Published: ${{ steps.meta.outputs.IMAGE_REG }}/${{ inputs.image_name }}:${GITHUB_REF#refs/tags/}"
