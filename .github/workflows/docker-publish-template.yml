@@ -54,6 +54,21 @@ jobs:
           echo "IMAGE_REG=ghcr.io/${{ github.repository_owner }}" >> $GITHUB_OUTPUT
           echo "BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
 
+          IMAGE="ghcr.io/${{ github.repository_owner }}/${{ inputs.image_name }}"
+          TAGS="${IMAGE}:latest
+          ${IMAGE}:${{ github.sha }}"
+
+          if [[ "${{ inputs.publish }}" == "true" && "${{ github.ref }}" == refs/tags/* ]]; then
+            TAGS="${TAGS}
+          ${IMAGE}:${GITHUB_REF#refs/tags/}"
+          fi
+
+          {
+            echo "TAGS<<EOF"
+            echo "$TAGS"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
       - name: Build and push (multi-arch)
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
         with:
@@ -61,10 +76,7 @@ jobs:
           file: ${{ inputs.dockerfile }}
           platforms: ${{ inputs.platforms }}
           push: ${{ inputs.publish }}
-          tags: |
-            ${{ steps.meta.outputs.IMAGE_REG }}/${{ inputs.image_name }}:latest
-            ${{ steps.meta.outputs.IMAGE_REG }}/${{ inputs.image_name }}:${GITHUB_REF#refs/tags/}
-            ${{ steps.meta.outputs.IMAGE_REG }}/${{ inputs.image_name }}:${{ github.sha }}
+          tags: ${{ steps.meta.outputs.TAGS }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
@@ -72,6 +84,5 @@ jobs:
 
       - name: Output published image names
         run: |
-          echo "Published: ${{ steps.meta.outputs.IMAGE_REG }}/${{ inputs.image_name }}:latest"
-          echo "Published: ${{ steps.meta.outputs.IMAGE_REG }}/${{ inputs.image_name }}:${{ github.sha }}"
-          echo "Published: ${{ steps.meta.outputs.IMAGE_REG }}/${{ inputs.image_name }}:${GITHUB_REF#refs/tags/}"
+          echo "Published:"
+          echo "${{ steps.meta.outputs.TAGS }}"
