@@ -1,4 +1,4 @@
-FROM ghcr.io/actions/actions-runner:latest@sha256:08c30b0a7105f64bddfc485d2487a22aa03932a791402393352fdf674bda2c29
+FROM ghcr.io/actions/actions-runner:latest@sha256:6d0b2d80d80f143f77dcb676e50920100bbb547e39e883454d57f45ab8c31300
 
 ARG IMAGE_VERSION=1.0.0
 ARG IMAGE_OWNER="GitHub"
